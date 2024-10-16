@@ -9,14 +9,14 @@ async function runLoginTest() {
   let browser;
   try {
     browser = await puppeteer.launch({
-      headless: true,
+      headless: false,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
     const page = await browser.newPage();
 
     await page.setViewport({ width: 1280, height: 720 });
 
-    await page.goto("https://dev.rv-arcs.com", { waitUntil: "networkidle0" });
+    await page.goto(process.env.SITE, { waitUntil: "networkidle0" });
     console.log("Page loaded successfully");
 
     await page.waitForSelector("input.k-input", { visible: true });
@@ -39,7 +39,7 @@ async function runLoginTest() {
     const userName = await page.$eval("div.profile span", (el) => el.textContent);
     console.log("User name found:", userName);
 
-    if (userName.includes("RV_ADMIN")) {
+    if (userName.includes("RV")) {
       console.log("Login successful, user name found:", userName);
 
       console.log("Waiting 10 seconds for session data to be fully populated...");

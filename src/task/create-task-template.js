@@ -10,7 +10,7 @@ async function selectDropdownValue(page, dropdownSelector, values = []) {
     const dropdowns = await page.$$(dropdownSelector);
     console.log(`Found ${dropdowns.length} dropdowns`);
 
-    for (let i = 0; i < dropdowns.length; i++) {
+    for (let i = 0; i < values.length; i++) {
       console.log(`Processing dropdown ${i + 1} of ${dropdowns.length}`);
 
       // Click the dropdown
@@ -18,7 +18,7 @@ async function selectDropdownValue(page, dropdownSelector, values = []) {
       console.log(`Clicked dropdown ${i + 1}`);
 
       // Wait for the dropdown list to be visible
-      await page.waitForSelector(".k-list-container", { visible: true, timeout: 5000 });
+      await page.waitForSelector(".k-list-container", { visible: true, timeout: 3000 });
       console.log(`Dropdown list container is visible for dropdown ${i + 1}`);
 
       // Wait for options to load
@@ -79,7 +79,7 @@ async function selectDropdownValue(page, dropdownSelector, values = []) {
 
       // Wait for the dropdown to close and the selection to be applied
       // await page.waitForTimeout(1000);
-      await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+      await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 3000)));
 
       // Verify the selection
       const selectedValue = await dropdowns[i].evaluate((el) => el.textContent.trim());
@@ -99,18 +99,14 @@ async function selectDropdownValue(page, dropdownSelector, values = []) {
 
 async function addTemplateRows(page, templateActions) {
   try {
-    // await actionSleep(page, ["5W", "A", "Sleep", "Automatic"], "2");
-    // await actionSleep(page, ["5W", "B", "Sleep", "Automatic"], "4");
-
-    // forEach method doesn't work well with async/await
-    // await templateActions.forEach(async (item) => {
-    //   await actionSleep(page, item.action, (item.duration).toString());
-    // });
-
     for (const item of templateActions) {
-      await actionSleep(page, item.action, item.duration.toString());
+      if(!(item.action[2])) {
+        await actionGoToWaypoint(page, item.action);
+      }
+      if(item.action[2] === "Sleep") {
+        await actionSleep(page, item.action, item.duration.toString());
+      }
     }
-    console.log("Template rows added successfully");
   } catch (error) {
     console.error("Error in addTemplateRows:", error);
     throw error;
@@ -125,7 +121,7 @@ async function actionSleep(page, action, timeout) {
 
     await page.evaluate(delay, 3000);
     await page.type("uc-txtbox.numeric kendo-numerictextbox input.k-input", timeout);
-    await page.evaluate(delay, 3000);
+    await page.evaluate(delay, 1000);
     await page.click(`div.add.listview-cell.ng-star-inserted > div > a`);
   } catch (error) {
     console.error("Error in actionSleep:", error);
@@ -133,12 +129,26 @@ async function actionSleep(page, action, timeout) {
   }
 }
 
+async function actionGoToWaypoint(page, action) {
+  try {
+    const floorplanDropdownSelector =
+      'uc-dropdown[class="col dropdown-container ng-star-inserted"] label.col-form-label + kendo-dropdownlist  .k-dropdown-wrap';
+    await selectDropdownValue(page, floorplanDropdownSelector, action);
+    await page.evaluate(delay, 1000);
+    await page.click(`div.add.listview-cell.ng-star-inserted > div > a`);
+  } catch (error) {
+    console.error("Error in actionSleep:", error);
+    throw error;
+  }
+
+}
+
 async function createTaskTemplate(session, { robot, templateActions }) {
   return new Promise(async (resolve, reject) => {
     let browser;
     try {
       browser = await puppeteer.launch({
-        headless: true,
+        headless: false,
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
       });
       const page = await browser.newPage();
@@ -153,7 +163,7 @@ async function createTaskTemplate(session, { robot, templateActions }) {
         console.log("SessionStorage set in the browser");
       }, session);
 
-      await page.goto("https://dev.rv-arcs.com", {
+      await page.goto(process.env.SITE, {
         waitUntil: "networkidle0",
         timeout: 60000, // Increase timeout to 60 seconds
       });
@@ -166,7 +176,7 @@ async function createTaskTemplate(session, { robot, templateActions }) {
         const userName = await page.$eval("div.profile span", (el) => el.textContent);
         console.log("User name found:", userName);
 
-        if (userName.includes("RV_ADMIN")) {
+        if (userName.includes("RV")) {
           console.log("Session is valid, user is logged in");
 
           await page.waitForSelector("li[kendodraweritem]", {
@@ -186,7 +196,7 @@ async function createTaskTemplate(session, { robot, templateActions }) {
             throw new Error("No valid menu items found");
           }
 
-          await page.goto(`https://dev.rv-arcs.com/${filteredMenuItems[0].toLowerCase()}?selectedTab=template`, {
+          await page.goto(`${process.env.SITE}/${filteredMenuItems[0].toLowerCase()}?selectedTab=template`, {
             waitUntil: "networkidle0",
             timeout: 60000,
           });
@@ -208,7 +218,7 @@ async function createTaskTemplate(session, { robot, templateActions }) {
           await inputFields[0].type(`AUTO-CODE-${filteredMenuItems[0].toUpperCase()}-${now.toISOString()}`);
           await inputFields[1].type(`AUTO-NAME-${filteredMenuItems[0].toUpperCase()}-${now.toISOString()}`);
 
-          await page.evaluate(delay, 3000);
+          await page.evaluate(delay, 1000);
 
           const robotDropdownSelector = 'uc-dropdown[lab="Robot"] kendo-dropdownlist .k-dropdown-wrap';
           await selectDropdownValue(page, robotDropdownSelector, [robot]);
@@ -217,10 +227,9 @@ async function createTaskTemplate(session, { robot, templateActions }) {
 
           await addTemplateRows(page, templateActions);
 
-          await page.waitForSelector("app-cm-task-job > div > div > div > button:nth-child(2)", { visible: true });
-          await page.click("app-cm-task-job > div > div > div > button:nth-child(2)");
-
-          await page.evaluate(delay, 5000);
+          await page.evaluate(delay, 3000);
+          await page.waitForSelector("div > div > app-cm-task-job > div > div > div > button:nth-child(2)", { visible: true });
+          await page.click("div > div > app-cm-task-job > div > div > div > button:nth-child(2)");
 
           console.log("Task template creation completed successfully");
 
