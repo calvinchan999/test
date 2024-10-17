@@ -10,7 +10,7 @@ async function selectDropdownItem(page, selector, item) {
   await page.click(selector);
 
   await page.waitForSelector(".k-list-container", { visible: true, timeout: 3000 });
-  await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+  await page.evaluate(delay, 1000);
 
   const result = await page.evaluate((value) => {
     const selectors = [".k-list-item", ".k-list-container li", ".k-list-scroller li", '[role="option"]', "kendo-list .k-item"];
@@ -134,7 +134,6 @@ async function createTaskSchedule(session, { templateName, startDate, endDate, s
           });
           await page.click(newButtonSelector);
 
-          // await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
           await page.evaluate(delay, 1000);
 
           const startDateSelector = 'uc-date-input.col.date-input-container.startDateTime > kendo-datetimepicker > span > kendo-dateinput input';
@@ -146,14 +145,12 @@ async function createTaskSchedule(session, { templateName, startDate, endDate, s
           await page.type(startDateSelector, startDate, { delay: 100 });
           await page.type(endDateSelector, endDate, { delay: 100 });
 
-          // await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
           await page.evaluate(delay, 1000);
           const scheduleNameSelector = 'div:nth-child(2) > uc-txtbox > form > kendo-textbox > input';
           const scheduleName = `[Schedule] ${templateName}`;
           await page.type(scheduleNameSelector, scheduleName, { delay: 100 });
           taskSchedulingInfo.scheduleName = scheduleName;
 
-          // await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 2000)));
           await page.evaluate(delay, 2000);
 
           const recurrenceDropdownSelector = "uc-cron-editor > div > uc-dropdown > div > kendo-dropdownlist";
@@ -173,7 +170,6 @@ async function createTaskSchedule(session, { templateName, startDate, endDate, s
             taskSchedulingInfo.minute = schedulingSettings.minute;
           }
 
-          // await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 2000)));
           await page.evaluate(delay, 2000);
           const templateDropdownSelector = "uc-dropdown > div > kendo-dropdownlist";
           const templateDropdownSelectorResult = await selectDropdownItem(page, templateDropdownSelector, templateName );

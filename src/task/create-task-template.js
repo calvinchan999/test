@@ -20,9 +20,7 @@ async function selectDropdownValue(page, dropdownSelector, values = []) {
         await page.waitForSelector(".k-list-container", { visible: true, timeout: 3000 });
         console.log(`Dropdown list container is visible for dropdown ${i + 1}`);
       
-        // Wait for options to load
-        // await page.waitForTimeout(1000);
-        await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+        await page.evaluate(delay, 1000);
 
         const result = await page.evaluate((value) => {
           const selectors = [".k-list-item", ".k-list-container li", ".k-list-scroller li", '[role="option"]', "kendo-list .k-item"];
@@ -76,10 +74,7 @@ async function selectDropdownValue(page, dropdownSelector, values = []) {
         }
 
         console.log(`Selected value for dropdown ${i + 1}: ${result.selected}`);
-
-        // Wait for the dropdown to close and the selection to be applied
-        // await page.waitForTimeout(1000);
-        await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 3000)));
+        await page.evaluate(delay, 3000);
 
         // Verify the selection
         const selectedValue = await dropdowns[i].evaluate((el) => el.textContent.trim());
