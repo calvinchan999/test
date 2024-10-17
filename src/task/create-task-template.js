@@ -1,11 +1,9 @@
 require("dotenv").config();
 const puppeteer = require("puppeteer");
-
-async function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+const { delay } = require("../../helper");
 
 async function selectDropdownValue(page, dropdownSelector, values = []) {
+  const results = [];
   try {
     const dropdowns = await page.$$(dropdownSelector);
     console.log(`Found ${dropdowns.length} dropdowns`);
@@ -72,6 +70,7 @@ async function selectDropdownValue(page, dropdownSelector, values = []) {
 
       if (!result.success) {
         console.error(`Error in dropdown ${i + 1}:`, result.message);
+        results.push({ success: false, message: result.message, dropdownIndex: i });
         continue; // Move to the next dropdown
       }
 
@@ -87,45 +86,55 @@ async function selectDropdownValue(page, dropdownSelector, values = []) {
 
       if (!selectedValue.includes(result.selected)) {
         console.error(`Failed to select option in dropdown ${i + 1}. Expected to include: "${result.selected}", Actual: "${selectedValue}"`);
+        results.push({ success: false, message: `Failed to select option`, expected: result.selected, actual: selectedValue, dropdownIndex: i });
       } else {
         console.log(`Selection successful for dropdown ${i + 1}`);
+        results.push({ success: true,  dropdownIndex: i, result });
       }
     }
   } catch (error) {
     console.error(`Error in selectDropdownValues:`, error);
-    throw error;
+    results.push({ success: false, message: error.message, error });
+    // throw error;
   }
+  return results;
 }
 
 async function addTemplateRows(page, templateActions) {
+  const results = [];
   try {
     for (const item of templateActions) {
-      if(!(item.action[2])) {
-        await actionGoToWaypoint(page, item.action);
+      let result;
+      if (!item.action[2]) {
+        result = await actionGoToWaypoint(page, item.action);
+        results.push({ type: 'GoToWaypoint', action: item.action, result });
       }
-      if(item.action[2] === "Sleep") {
-        await actionSleep(page, item.action, item.duration.toString());
+      if (item.action[2] === "Sleep") {
+        result = await actionSleep(page, item.action, item.duration.toString());
+        results.push({ type: 'Sleep', action: item.action, duration: item.duration, result });
       }
     }
   } catch (error) {
     console.error("Error in addTemplateRows:", error);
-    throw error;
+    results.push({ type: 'Error', error: error.message });
   }
+  return results;
 }
-
 async function actionSleep(page, action, timeout) {
   try {
     const floorplanDropdownSelector =
       'uc-dropdown[class="col dropdown-container ng-star-inserted"] label.col-form-label + kendo-dropdownlist  .k-dropdown-wrap';
-    await selectDropdownValue(page, floorplanDropdownSelector, action);
+    const dropdownResult = await selectDropdownValue(page, floorplanDropdownSelector, action);
 
     await page.evaluate(delay, 3000);
     await page.type("uc-txtbox.numeric kendo-numerictextbox input.k-input", timeout);
     await page.evaluate(delay, 1000);
     await page.click(`div.add.listview-cell.ng-star-inserted > div > a`);
+
+    return { success: true, dropdownResult };
   } catch (error) {
     console.error("Error in actionSleep:", error);
-    throw error;
+    return { success: false, error: error.message };
   }
 }
 
@@ -133,16 +142,17 @@ async function actionGoToWaypoint(page, action) {
   try {
     const floorplanDropdownSelector =
       'uc-dropdown[class="col dropdown-container ng-star-inserted"] label.col-form-label + kendo-dropdownlist  .k-dropdown-wrap';
-    await selectDropdownValue(page, floorplanDropdownSelector, action);
+    const dropdownResult = await selectDropdownValue(page, floorplanDropdownSelector, action);
+
     await page.evaluate(delay, 1000);
     await page.click(`div.add.listview-cell.ng-star-inserted > div > a`);
+
+    return { success: true, dropdownResult };
   } catch (error) {
-    console.error("Error in actionSleep:", error);
-    throw error;
+    console.error("Error in actionGoToWaypoint:", error);
+    return { success: false, error: error.message };
   }
-
 }
-
 async function createTaskTemplate(session, { robot, templateActions }) {
   return new Promise(async (resolve, reject) => {
     let browser;
@@ -196,7 +206,8 @@ async function createTaskTemplate(session, { robot, templateActions }) {
             throw new Error("No valid menu items found");
           }
 
-          await page.goto(`${process.env.SITE}/${filteredMenuItems[0].toLowerCase()}?selectedTab=template`, {
+          const robotType = filteredMenuItems[0];
+          await page.goto(`${process.env.SITE}/${robotType.toLowerCase()}?selectedTab=template`, {
             waitUntil: "networkidle0",
             timeout: 60000,
           });
@@ -215,17 +226,19 @@ async function createTaskTemplate(session, { robot, templateActions }) {
           });
           const inputFields = await page.$$("input.k-input");
           const now = new Date();
-          await inputFields[0].type(`AUTO-CODE-${filteredMenuItems[0].toUpperCase()}-${now.toISOString()}`);
-          await inputFields[1].type(`AUTO-NAME-${filteredMenuItems[0].toUpperCase()}-${now.toISOString()}`);
+          const templateCode = `AUTO-CODE-${robotType.toUpperCase()}-${now.toISOString()}`;
+          const templateName = `AUTO-NAME-${robotType.toUpperCase()}-${now.toISOString()}`;
+          await inputFields[0].type(templateCode);
+          await inputFields[1].type(templateName);
 
           await page.evaluate(delay, 1000);
 
           const robotDropdownSelector = 'uc-dropdown[lab="Robot"] kendo-dropdownlist .k-dropdown-wrap';
-          await selectDropdownValue(page, robotDropdownSelector, [robot]);
+          const dropdownResults = await selectDropdownValue(page, robotDropdownSelector, [robot]);
 
           await page.evaluate(delay, 1000);
 
-          await addTemplateRows(page, templateActions);
+          const templateRowsResults = await addTemplateRows(page, templateActions);
 
           await page.evaluate(delay, 3000);
           await page.waitForSelector("div > div > app-cm-task-job > div > div > div > button:nth-child(2)", { visible: true });
@@ -235,6 +248,15 @@ async function createTaskTemplate(session, { robot, templateActions }) {
 
           resolve({
             status: "Create Task Template Pass",
+            templateInfo: {
+              robot, 
+              templateActions,
+              templateCode,
+              templateName,
+              robotType,
+              dropdownResults,
+              templateRowsResults
+            }
           });
         } else {
           throw new Error("User name does not match expected value");

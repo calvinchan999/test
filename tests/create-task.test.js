@@ -47,8 +47,16 @@ describe("ARCS Tests", () => {
       };
       const createTaskTemplateResult = await createTaskTemplate(sessionData, testData);
       await writeResultToJson("create-task-template-result", createTaskTemplateResult);
-
       expect(createTaskTemplateResult.status).toBe("Create Task Template Pass");
+      expect(createTaskTemplateResult.templateInfo.robot).toBeDefined();
+      expect(createTaskTemplateResult.templateInfo.templateActions).toBeDefined();
+      expect(createTaskTemplateResult.templateInfo.templateCode).toBeDefined();
+      expect(createTaskTemplateResult.templateInfo.templateName).toBeDefined();
+      expect(createTaskTemplateResult.templateInfo.robotType).toBeDefined();
+      expect(createTaskTemplateResult.templateInfo.dropdownResults).toBeDefined();
+      expect(createTaskTemplateResult.templateInfo.dropdownResults[0].success).toBe(true);
+      expect(createTaskTemplateResult.templateInfo.templateRowsResults).toBeDefined();
+
     } catch (error) {
       console.error("Task Template Test error:", error);
       throw error;

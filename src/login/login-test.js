@@ -1,9 +1,6 @@
 require("dotenv").config();
 const puppeteer = require("puppeteer");
-
-async function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+const { delay } = require("../../helper");
 
 async function runLoginTest() {
   let browser;
