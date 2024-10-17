@@ -43,16 +43,23 @@ async function runLoginTest() {
       await page.evaluate(delay, 10000);
 
       const sessionData = await page.evaluate(() => {
-        return {
-          accessToken: sessionStorage.getItem("accessToken"),
-          refreshToken: sessionStorage.getItem("refreshToken"),
-          userId: sessionStorage.getItem("userId"),
-          clientId: sessionStorage.getItem("clientId"),
-          currentUser: sessionStorage.getItem("currentUser"),
-          isGuestMode: sessionStorage.getItem("isGuestMode"),
-          arcsDefaultBuilding: sessionStorage.getItem("arcsDefaultBuilding"),
-          arcsLocationTree: sessionStorage.getItem("arcsLocationTree"),
-        };
+        const data = {};
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i);
+          data[key] = sessionStorage.getItem(key);
+        }
+        return data;
+
+        // return {
+        //   accessToken: sessionStorage.getItem("accessToken"),
+        //   refreshToken: sessionStorage.getItem("refreshToken"),
+        //   userId: sessionStorage.getItem("userId"),
+        //   clientId: sessionStorage.getItem("clientId"),
+        //   currentUser: sessionStorage.getItem("currentUser"),
+        //   isGuestMode: sessionStorage.getItem("isGuestMode"),
+        //   arcsDefaultBuilding: sessionStorage.getItem("arcsDefaultBuilding"),
+        //   arcsLocationTree: sessionStorage.getItem("arcsLocationTree"),
+        // };
       });
 
       console.log("Session data retrieved:", sessionData);
