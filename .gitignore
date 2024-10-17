@@ -9,3 +9,7 @@ node_modules/
 
 
 dropdown_options.json
+
+test-reporting
+./test-reporting
+./test-reporting/*
