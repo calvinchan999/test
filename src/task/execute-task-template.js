@@ -114,9 +114,7 @@ async function clickAutoRowExecuteButtons(page) {
   }
 }
 
-async function executeTaskTemplate(
-  session 
-) {
+async function executeTaskTemplate(session, { arcsRobotType }) {
   return new Promise(async (resolve, reject) => {
     let browser;
     try {
@@ -169,7 +167,9 @@ async function executeTaskTemplate(
             throw new Error("No valid menu items found");
           }
 
-          await page.goto(`${process.env.SITE}/${filteredMenuItems[0].toLowerCase()}?selectedTab=template`, {
+          const robotType = arcsRobotType ? arcsRobotType : filteredMenuItems[0];
+
+          await page.goto(`${process.env.SITE}/${robotType.toLowerCase()}?selectedTab=template`, {
             waitUntil: "networkidle0",
             timeout: 60000,
           });
@@ -213,4 +213,3 @@ async function executeTaskTemplate(
 }
 
 module.exports = executeTaskTemplate;
-

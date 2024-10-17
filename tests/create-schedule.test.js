@@ -6,11 +6,17 @@ describe("ARCS Tests", () => {
   test("Task Schedule Test", async () => {
     try {
       const testData = {
-        templateName: "AUTO-CODE-PATROL-2024-10-16T06:59:43.894Z",
+        templateName: "AUTO-CODE-PATROL-2024-10-17T07:59:29.317Z",
         startDate: "161020240000",
         endDate: "161020242359",
-        recurrence: "One Time Only", // only support (One Time Only)
+        schedulingSettings: {
+          recurrence: "Hourly", // only support (One Time Only, Hourly)
+          pattern: "Every",
+          minute: "5"
+        },
+        arcsRobotType: 'Patrol', // Delivery Patrol
       };
+  
       const createTaskScheduleResult = await createTaskSchedule(sessionData, testData);
       await writeResultToJson("create-task-schedule-result", createTaskScheduleResult);
 

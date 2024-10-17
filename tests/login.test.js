@@ -2,7 +2,7 @@ const runLoginTest = require("../src/login/login-test");
 const { writeResultToJson } = require("../helper");
 
 describe("ARCS Tests", () => {
-  let sessionData;
+  // let sessionData;
 
   test("Login Test", async () => {
     try {

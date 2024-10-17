@@ -39,7 +39,7 @@ async function selectDropdownItem(page, selector, item) {
     let targetOption;
 
     if (value) {
-      targetOption = optionsData.find((item) => item.text.includes(value));
+      targetOption = optionsData.find((item) => item.text.includes(value)); // todo
       if (!targetOption) {
         return { success: false, message: `Option with value "${value}" not found`, optionsData };
       }
@@ -64,7 +64,7 @@ async function selectDropdownItem(page, selector, item) {
   return result; 
 }
 
-async function createTaskSchedule(session, { templateName, startDate, endDate, recurrence }) {
+async function createTaskSchedule(session, { templateName, startDate, endDate, schedulingSettings = {}, arcsRobotType }) {
   return new Promise(async (resolve, reject) => {
     let browser;
     try {
@@ -75,6 +75,11 @@ async function createTaskSchedule(session, { templateName, startDate, endDate, r
       const page = await browser.newPage();
 
       await page.setViewport({ width: 1080, height: 720 });
+
+      const taskSchedulingInfo = {
+        startDate,
+        endDate,
+      }
 
       // Set session storage before navigation
       await page.evaluateOnNewDocument((sessionData) => {
@@ -116,8 +121,8 @@ async function createTaskSchedule(session, { templateName, startDate, endDate, r
           if (filteredMenuItems.length === 0) {
             throw new Error("No valid menu items found");
           }
-
-          await page.goto(`${process.env.SITE}/${filteredMenuItems[0].toLowerCase()}?selectedTab=schedule`, {
+          const robotType = arcsRobotType ? arcsRobotType : filteredMenuItems[0];
+          await page.goto(`${process.env.SITE}/${robotType.toLowerCase()}?selectedTab=schedule`, {
             waitUntil: "networkidle0",
             timeout: 60000,
           });
@@ -129,7 +134,8 @@ async function createTaskSchedule(session, { templateName, startDate, endDate, r
           });
           await page.click(newButtonSelector);
 
-          await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+          // await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+          await page.evaluate(delay, 1000);
 
           const startDateSelector = 'uc-date-input.col.date-input-container.startDateTime > kendo-datetimepicker > span > kendo-dateinput input';
           const endDateSelector = 'uc-date-input.col.date-input-container.endDateTime > kendo-datetimepicker > span > kendo-dateinput input';
@@ -140,31 +146,56 @@ async function createTaskSchedule(session, { templateName, startDate, endDate, r
           await page.type(startDateSelector, startDate, { delay: 100 });
           await page.type(endDateSelector, endDate, { delay: 100 });
 
-          await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+          // await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+          await page.evaluate(delay, 1000);
           const scheduleNameSelector = 'div:nth-child(2) > uc-txtbox > form > kendo-textbox > input';
           const scheduleName = `[Schedule] ${templateName}`;
           await page.type(scheduleNameSelector, scheduleName, { delay: 100 });
+          taskSchedulingInfo.scheduleName = scheduleName;
 
-          await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 2000)));
+          // await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 2000)));
+          await page.evaluate(delay, 2000);
+
           const recurrenceDropdownSelector = "uc-cron-editor > div > uc-dropdown > div > kendo-dropdownlist";
-          const recurrenceDropdownSelectorResult = await selectDropdownItem(page, recurrenceDropdownSelector, recurrence );
+          const recurrenceDropdownSelectorResult = await selectDropdownItem(page, recurrenceDropdownSelector, schedulingSettings.recurrence );
+          taskSchedulingInfo.recurrenceDropdownSelectorResult = recurrenceDropdownSelectorResult;
+          await page.evaluate(delay, 3000);
 
-          await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 2000)));
+          if(schedulingSettings.recurrence ==='One Time Only') {}
+
+          if(schedulingSettings.recurrence ==='Hourly') {
+            const patternDropdownSelector = "uc-dropdown.col.dropdown-container.ng-star-inserted > div > kendo-dropdownlist";
+            const patternDropdownSelectorResult = await selectDropdownItem(page, patternDropdownSelector, schedulingSettings.pattern );
+            taskSchedulingInfo.patternDropdownSelectorResult = patternDropdownSelectorResult;
+
+            const minuteSelector = 'div.form-row.hour-minute.ng-star-inserted > uc-txtbox > div > kendo-numerictextbox > span > input';
+            await page.type(minuteSelector, schedulingSettings.minute, { delay: 100 });
+            taskSchedulingInfo.minute = schedulingSettings.minute;
+          }
+
+          // await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 2000)));
+          await page.evaluate(delay, 2000);
           const templateDropdownSelector = "uc-dropdown > div > kendo-dropdownlist";
           const templateDropdownSelectorResult = await selectDropdownItem(page, templateDropdownSelector, templateName );
+          taskSchedulingInfo.templateDropdownSelectorResult = templateDropdownSelectorResult
 
+   
           await page.evaluate(delay, 1000);
           await page.click("div.button-container > button.k-button.ng-star-inserted");
 
+          await page.evaluate(delay, 3000);
+
           resolve({
             status: "Create Task Schedule Pass",
-            taskSchedulingInfo: {
-              scheduleName,
-              startDate,
-              endDate,
-              templateDropdownSelectorResult,
-              recurrenceDropdownSelectorResult
-            }
+            // taskSchedulingInfo: {
+            //   scheduleName,
+            //   startDate,
+            //   endDate,
+            //   templateDropdownSelectorResult,
+            //   recurrenceDropdownSelectorResult,
+            //   patternDropdownSelectorResult
+            // }
+            taskSchedulingInfo
 
           });
         } else {

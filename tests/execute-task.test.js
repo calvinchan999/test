@@ -6,7 +6,11 @@ describe("ARCS Tests", () => {
 
   test("Execute Task Template Test", async () => {
     try {
-      const executeTaskTemplateResult = await executeTaskTemplate(sessionData);
+      const testData = { 
+        arcsRobotType: 'Delivery' // Delivery Patrol 
+      };
+      
+      const executeTaskTemplateResult = await executeTaskTemplate(sessionData, testData);
       await writeResultToJson("execute-task-template-result", executeTaskTemplateResult);
 
       expect(executeTaskTemplateResult.status).toBe("Execute Task Template Pass");
