@@ -7,9 +7,9 @@ describe("ARCS Tests", () => {
   test("Execute Task Template Test", async () => {
     try {
       const testData = { 
-        arcsRobotType: 'Delivery' // Delivery Patrol 
+        arcsRobotType: 'Patrol' // Delivery, Patrol 
       };
-      
+
       const executeTaskTemplateResult = await executeTaskTemplate(sessionData, testData);
       await writeResultToJson("execute-task-template-result", executeTaskTemplateResult);
 
