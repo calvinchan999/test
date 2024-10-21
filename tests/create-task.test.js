@@ -4,12 +4,73 @@ const { sessionData } = require("../test-reporting/login-test-result.json");
 
 describe("ARCS Tests", () => {
   // Dev
+  // const testData = [
+  //   {
+  //     data: {
+  //       arcsRobotType: "Patrol", // Delivery, Patrol
+  //       robot: "Patrol S5",
+  //       templateActions: [
+  //         {
+  //           action: ["5W", "R03", null, "Automatic"],
+  //         },
+  //         {
+  //           action: ["5W", "Parking", "Lidar Docking Dock", "Path Follow"],
+  //           liderDockingDockSetting: "Shelf Carrier",
+  //         },
+  //         {
+  //           action: ["5W", "Parking", "Lidar Docking Dock", "Path Follow"],
+  //           liderDockingDockSetting: "Shelf Carrier",
+  //         },
+  //         {
+  //           action: ["5W", "R05", "Safety Zone Change", "Path Follow"],
+  //           safetyZoneSetting: "Minimum",
+  //         },
+  //         {
+  //           action: ["5W", "R03", "Sleep"],
+  //           duration: "1500",
+  //         },
+  //         {
+  //           action: ["5W", "R03"],
+  //         },
+  //         {
+  //           action: ["5W", "R05", "Safety Zone Change", "Path Follow"],
+  //           safetyZoneSetting: "Custom1",
+  //         },
+  //         {
+  //           action: ["5W", "R05", "Safety Zone Change", "Path Follow"],
+  //           safetyZoneSetting: "Normal",
+  //         },
+  //       ],
+  //     },
+  //   },
+  //   {
+  //     data: {
+  //       arcsRobotType: "Patrol", // Delivery, Patrol
+  //       robot: "Patrol S4",
+  //       templateActions: [
+  //         {
+  //           action: ["5W", "R03", null, "Automatic"],
+  //         }
+  //       ],
+  //     },
+  //   },
+  // ];
+
   const testData = [
     {
       data: {
         arcsRobotType: "Patrol", // Delivery, Patrol
-        robot: "Patrol S5",
+        robot: "Patrol S1",
         templateActions: [
+          {
+            action: ["5W", "R03"],
+          },
+          {
+            action: ["5W", "Croner"],
+          },
+          {
+            action: ["5W", "R07"],
+          },
           {
             action: ["5W", "R03", null, "Automatic"],
           },
@@ -25,32 +86,6 @@ describe("ARCS Tests", () => {
             action: ["5W", "R05", "Safety Zone Change", "Path Follow"],
             safetyZoneSetting: "Minimum",
           },
-          {
-            action: ["5W", "R03", "Sleep"],
-            duration: "1500",
-          },
-          {
-            action: ["5W", "R03"],
-          },
-          {
-            action: ["5W", "R05", "Safety Zone Change", "Path Follow"],
-            safetyZoneSetting: "Custom1",
-          },
-          {
-            action: ["5W", "R05", "Safety Zone Change", "Path Follow"],
-            safetyZoneSetting: "Normal",
-          },
-        ],
-      },
-    },
-    {
-      data: {
-        arcsRobotType: "Patrol", // Delivery, Patrol
-        robot: "Patrol S4",
-        templateActions: [
-          {
-            action: ["5W", "R03", null, "Automatic"],
-          }
         ],
       },
     },
@@ -116,7 +151,7 @@ describe("ARCS Tests", () => {
   // ];
 
   testData.forEach((testCase, index) => {
-    test(`Task Template Test #${index}`, async () => {
+    test(`Create Task Template Test #${index}`, async () => {
       try {
         const createTaskTemplateResult = await createTaskTemplate(sessionData, testCase.data);
         await writeResultToJson(`create-task-template-result-${index}`, createTaskTemplateResult);

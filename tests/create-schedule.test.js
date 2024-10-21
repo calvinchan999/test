@@ -6,13 +6,13 @@ describe("ARCS Tests", () => {
   const testData = [
     {
       data: {
-        templateName: "AUTO-CODE-PATROL-2024-10-17T07:59:29.317Z",
-        startDate: "161020240000",
-        endDate: "161020242359",
+        templateName: "gasd",
+        startDate: "181020240000",
+        endDate: "181020242359",
         schedulingSettings: {
           recurrence: "Hourly", // only support (One Time Only, Hourly)
           pattern: "Every",
-          minute: "5",
+          minute: "2",
         },
         arcsRobotType: "Patrol", // Delivery, Patrol
       },

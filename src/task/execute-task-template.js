@@ -1,6 +1,8 @@
 require("dotenv").config();
-const puppeteer = require("puppeteer");
+// const puppeteer = require("puppeteer");
+const { setupBrowser } = require('../utils/browserUtils');
 const { delay } = require("../../helper");
+
 
 async function clickAutoRowExecuteButtons(page) {
   // const { clickAll = false, maxRows = Infinity, startFromLatest = true } = options;
@@ -118,21 +120,8 @@ async function executeTaskTemplate(session, { arcsRobotType }) {
   return new Promise(async (resolve, reject) => {
     let browser;
     try {
-      browser = await puppeteer.launch({
-        headless: false,
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      });
-      const page = await browser.newPage();
-
-      await page.setViewport({ width: 1080, height: 720 });
-
-      // Set session storage before navigation
-      await page.evaluateOnNewDocument((sessionData) => {
-        Object.keys(sessionData).forEach((key) => {
-          sessionStorage.setItem(key, sessionData[key]);
-        });
-        console.log("SessionStorage set in the browser");
-      }, session);
+      const { browser: br, page } = await setupBrowser(session);
+      browser = br;
 
       await page.goto(process.env.SITE, {
         waitUntil: "networkidle0",
@@ -175,8 +164,6 @@ async function executeTaskTemplate(session, { arcsRobotType }) {
           });
 
           const result = await clickAutoRowExecuteButtons(page);
-
-          console.log(result);
 
           resolve({
             status: "Execute Task Template Pass",

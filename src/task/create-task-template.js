@@ -1,387 +1,63 @@
 require("dotenv").config();
-const puppeteer = require("puppeteer");
+const { navigateToTemplate, selectDropdownValue, addTemplateRows } = require('../utils/taskUtils');
+const { setupBrowser } = require('../utils/browserUtils');
 const { delay } = require("../../helper");
 
-async function selectDropdownValue(page, dropdownSelector, values = []) {
-  const results = [];
-  try {
-    const dropdowns = await page.$$(dropdownSelector);
-    console.log(`Found ${dropdowns.length} dropdowns`);
-
-    for (let i = 0; i < values.length; i++) {
-      if (values[i]) {
-        console.log(`Processing dropdown ${i + 1} of ${dropdowns.length}`);
-
-        // Click the dropdown
-        await dropdowns[i].click();
-        console.log(`Clicked dropdown ${i + 1}`);
-
-        // Wait for the dropdown list to be visible
-        await page.waitForSelector(".k-list-container", { visible: true, timeout: 3000 });
-        console.log(`Dropdown list container is visible for dropdown ${i + 1}`);
-      
-        await page.evaluate(delay, 1000);
-
-        const result = await page.evaluate((value) => {
-          const selectors = [".k-list-item", ".k-list-container li", ".k-list-scroller li", '[role="option"]', "kendo-list .k-item"];
-
-          let options = [];
-          for (const selector of selectors) {
-            options = Array.from(document.querySelectorAll(selector));
-            if (options.length > 0) {
-              console.log(`Found ${options.length} options with selector: ${selector}`);
-              break;
-            }
-          }
-
-          if (options.length === 0) {
-            console.log("No options found with any selector");
-            return { success: false, message: "No options found in dropdown" };
-          }
-
-          const optionsData = options.map((option, index) => ({
-            index,
-            text: option.textContent.trim(),
-            html: option.outerHTML,
-            classes: option.className,
-          }));
-          
-          let targetOption;
-          if (value) {
-            targetOption = optionsData.find((item) => item.text.includes(value));
-            if (!targetOption) {
-              return { success: false, message: `Option with value "${value}" not found`, optionsData };
-            }
-          } else {
-            targetOption = optionsData[optionsData.length - 1]; // Last option if no value provided
-          }
-
-          console.log("Target option:", targetOption);
-
-          const optionElement = options[targetOption.index];
-          console.log(`Selecting option: "${targetOption.text}"`);
-          optionElement.click();
-
-          return { success: true, selected: targetOption.text, optionsData };
-        }, values[i]);
-
-        console.log(`Evaluation result for dropdown ${i + 1}:`, result);
-
-        if (!result.success) {
-          console.error(`Error in dropdown ${i + 1}:`, result.message);
-          results.push({ success: false, message: result.message, dropdownIndex: i });
-          continue; // Move to the next dropdown
-        }
-
-        console.log(`Selected value for dropdown ${i + 1}: ${result.selected}`);
-        await page.evaluate(delay, 3000);
-
-        // Verify the selection
-        const selectedValue = await dropdowns[i].evaluate((el) => el.textContent.trim());
-        console.log(`Dropdown ${i + 1} now shows: ${selectedValue}`);
-
-        if (!selectedValue.includes(result.selected)) {
-          console.error(`Failed to select option in dropdown ${i + 1}. Expected to include: "${result.selected}", Actual: "${selectedValue}"`);
-          results.push({ success: false, message: `Failed to select option`, expected: result.selected, actual: selectedValue, dropdownIndex: i });
-        } else {
-          console.log(`Selection successful for dropdown ${i + 1}`);
-          results.push({ success: true, dropdownIndex: i, result });
-        }
-      }
-    }
-  } catch (error) {
-    console.error(`Error in selectDropdownValues:`, error);
-    results.push({ success: false, message: error.message, error });
-    // throw error;
-  }
-  return results;
-}
-
-async function addTemplateRows(page, templateActions) {
-  const results = [];
-  try {
-    for (const item of templateActions) {
-      let result;
-      if (!item.action[2]) {
-        result = await actionGoToWaypoint(page, item.action);
-        results.push({ type: "GoToWaypoint", action: item.action, result });
-      }
-      if (item.action[2] === "Sleep") {
-        result = await actionSleep(page, item.action, item.duration.toString());
-        results.push({ type: "Sleep", action: item.action, duration: item.duration, result });
-      }
-      if (item.action[2] === "Safety Zone Change") {
-        result = await actionSafetyZoneChange(page, item.action, item.safetyZoneSetting);
-        results.push({ type: "SafetyZoneChange", action: item.action, safetyZoneSetting: item.safetyZoneSetting, result });
-      }
-      if (item.action[2] === "Lidar Docking Dock") {
-        result = await actionLidarDockingDock(page, item.action, item.liderDockingDockSetting);
-        results.push({ type: "LidarDockingDock", action: item.action, liderDockingDockSetting: item.liderDockingDockSetting, result });
-      }
-      if (item.action[2] === "Shelf Carrier Command") {
-        result = await actionShelfCarrierCommand(page, item.action, item.shelfCarrierCommandSetting);
-        results.push({ type: "ShelfCarrierComman", action: item.action, shelfCarrierCommandSetting: item.shelfCarrierCommandSetting, result });
-      }
-      if(item.action[2] === "Lidar Docking Undock") {
-        result = await actionLidarDockingUndock(page, item.action);
-        results.push({ type: "LidarDockingUndock", action: item.action, result });
-      }
-
-    }
-  } catch (error) {
-    console.error("Error in addTemplateRows:", error);
-    results.push({ type: "Error", error: error.message });
-  }
-  return results;
-}
-async function actionLidarDockingUndock(page, action) {
-  const floorplanDropdownSelector =
-  'uc-dropdown[class="col dropdown-container ng-star-inserted"] label.col-form-label + kendo-dropdownlist  .k-dropdown-wrap';
-const dropdownResult = await selectDropdownValue(page, floorplanDropdownSelector, action);
-
-await page.evaluate(delay, 1000);
-await page.click(`div.add.listview-cell.ng-star-inserted > div > a`);
-
-return { success: true, dropdownResult };
-}
-
-async function actionShelfCarrierCommand(page, action, shelfCarrierCommandSetting) {
-  const floorplanDropdownSelector =
-    'uc-dropdown[class="col dropdown-container ng-star-inserted"] label.col-form-label + kendo-dropdownlist  .k-dropdown-wrap';
-  const dropdownResult = await selectDropdownValue(page, floorplanDropdownSelector, action);
-
-  await page.evaluate(delay, 3000);
-
-  await page.waitForSelector('.form-row .checkbox input[type="radio"]');
-
-  await page.evaluate((value) => {
-    const labels = Array.from(document.querySelectorAll(".form-row .checkbox label"));
-    const custom1Label = labels.find((label) => label.textContent.trim() === value);
-    if (custom1Label) {
-      custom1Label.previousElementSibling.click();
-    } else {
-      throw new Error(`${value} radio button not found`);
-    }
-  }, shelfCarrierCommandSetting);
-
-  await page.evaluate(delay, 1000);
-  await page.click(`div.add.listview-cell.ng-star-inserted > div > a`);
-
-  return { success: true, dropdownResult };
-}
-
-async function actionLidarDockingDock(page, action, liderDockingDockSetting) {
-  const floorplanDropdownSelector =
-    'uc-dropdown[class="col dropdown-container ng-star-inserted"] label.col-form-label + kendo-dropdownlist  .k-dropdown-wrap';
-  const dropdownResult = await selectDropdownValue(page, floorplanDropdownSelector, action);
-
-  await page.evaluate(delay, 3000);
-
-  await page.waitForSelector('.form-row .checkbox input[type="radio"]');
-
-  await page.evaluate((value) => {
-    const labels = Array.from(document.querySelectorAll(".form-row .checkbox label"));
-    const custom1Label = labels.find((label) => label.textContent.trim() === value);
-    if (custom1Label) {
-      custom1Label.previousElementSibling.click();
-    } else {
-      throw new Error(`${value} radio button not found`);
-    }
-  }, liderDockingDockSetting);
-
-  await page.evaluate(delay, 1000);
-  await page.click(`div.add.listview-cell.ng-star-inserted > div > a`);
-
-  return { success: true, dropdownResult };
-}
-
-async function actionSafetyZoneChange(page, action, safetyZoneSetting) {
-  try {
-    const floorplanDropdownSelector =
-      'uc-dropdown[class="col dropdown-container ng-star-inserted"] label.col-form-label + kendo-dropdownlist  .k-dropdown-wrap';
-    const dropdownResult = await selectDropdownValue(page, floorplanDropdownSelector, action);
-
-    await page.evaluate(delay, 3000);
-
-    await page.waitForSelector('.form-row .checkbox input[type="radio"]');
-
-    await page.evaluate((value) => {
-      const labels = Array.from(document.querySelectorAll(".form-row .checkbox label"));
-      const custom1Label = labels.find((label) => label.textContent.trim() === value);
-      if (custom1Label) {
-        custom1Label.previousElementSibling.click();
-      } else {
-        throw new Error(`${value} radio button not found`);
-      }
-    }, safetyZoneSetting);
-
-    await page.evaluate(delay, 1000);
-    await page.click(`div.add.listview-cell.ng-star-inserted > div > a`);
-
-    return { success: true, dropdownResult };
-  } catch (error) {
-    console.error("Error in actionSafetyZoneChange:", error);
-    return { success: false, error: error.message };
-  }
-}
-
-async function actionSleep(page, action, timeout) {
-  try {
-    const floorplanDropdownSelector =
-      'uc-dropdown[class="col dropdown-container ng-star-inserted"] label.col-form-label + kendo-dropdownlist  .k-dropdown-wrap';
-    const dropdownResult = await selectDropdownValue(page, floorplanDropdownSelector, action);
-
-    await page.evaluate(delay, 3000);
-    await page.type("uc-txtbox.numeric kendo-numerictextbox input.k-input", timeout);
-    await page.evaluate(delay, 1000);
-    await page.click(`div.add.listview-cell.ng-star-inserted > div > a`);
-
-    return { success: true, dropdownResult };
-  } catch (error) {
-    console.error("Error in actionSleep:", error);
-    return { success: false, error: error.message };
-  }
-}
-
-async function actionGoToWaypoint(page, action) {
-  try {
-    const floorplanDropdownSelector =
-      'uc-dropdown[class="col dropdown-container ng-star-inserted"] label.col-form-label + kendo-dropdownlist  .k-dropdown-wrap';
-    const dropdownResult = await selectDropdownValue(page, floorplanDropdownSelector, action);
-
-    await page.evaluate(delay, 1000);
-    await page.click(`div.add.listview-cell.ng-star-inserted > div > a`);
-
-    return { success: true, dropdownResult };
-  } catch (error) {
-    console.error("Error in actionGoToWaypoint:", error);
-    return { success: false, error: error.message };
-  }
-}
 async function createTaskTemplate(session, { robot, arcsRobotType, templateActions }) {
-  return new Promise(async (resolve, reject) => {
-    let browser;
-    try {
-      browser = await puppeteer.launch({
-        headless: false,
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      });
-      const page = await browser.newPage();
+  let browser;
+  try {
+    const { browser: br, page } = await setupBrowser(session);
+    browser = br;
 
-      await page.setViewport({ width: 1080, height: 720 });
+    const robotType = await navigateToTemplate(page, arcsRobotType);
 
-      // Set session storage before navigation
-      await page.evaluateOnNewDocument((sessionData) => {
-        Object.keys(sessionData).forEach((key) => {
-          sessionStorage.setItem(key, sessionData[key]);
-        });
-        console.log("SessionStorage set in the browser");
-      }, session);
+    const buttonSelector = 'button.k-button.k-button-icontext[kendobutton][icon="plus"]:has(span.k-icon.k-i-plus)';
+    await page.waitForSelector(buttonSelector, { visible: true, timeout: 10000 });
+    await page.click(buttonSelector);
 
-      await page.goto(process.env.SITE, {
-        waitUntil: "networkidle0",
-        timeout: 60000, // Increase timeout to 60 seconds
-      });
-      console.log("Page loaded with session data");
+    await page.waitForSelector("input.k-input", { visible: true, timeout: 10000 });
+    const inputFields = await page.$$("input.k-input");
+    const now = new Date();
+    const templateCode = `AUTO-CODE-${robotType.toUpperCase()}-${now.toISOString()}`;
+    const templateName = `AUTO-NAME-${robotType.toUpperCase()}-${now.toISOString()}`;
+    await inputFields[0].type(templateCode);
+    await inputFields[1].type(templateName);
 
-      try {
-        await page.waitForSelector("div.header.header-bg", { timeout: 10000 });
-        console.log("Found header, likely logged in");
+    await page.evaluate(delay, 1000);
 
-        const userName = await page.$eval("div.profile span", (el) => el.textContent);
-        console.log("User name found:", userName);
+    const robotDropdownSelector = 'uc-dropdown[lab="Robot"] kendo-dropdownlist .k-dropdown-wrap';
+    const dropdownResults = await selectDropdownValue(page, robotDropdownSelector, [robot]);
 
-        if (userName.includes("RV")) {
-          console.log("Session is valid, user is logged in");
+    await page.evaluate(delay, 1000);
 
-          await page.waitForSelector("li[kendodraweritem]", {
-            visible: true,
-            timeout: 10000,
-          });
+    const templateRowsResults = await addTemplateRows(page, templateActions);
 
-          const filteredMenuItems = await page.evaluate(() => {
-            const items = Array.from(document.querySelectorAll("li[kendodraweritem]"));
-            const allLabels = items.map((item) => item.getAttribute("aria-label")).filter((label) => label);
-            return allLabels.filter((label) => !["Dashboard", "Setup"].includes(label));
-          });
+    await page.evaluate(delay, 3000);
+    await page.waitForSelector("div > div > app-cm-task-job > div > div > div > button:nth-child(2)", { visible: true });
+    await page.click("div > div > app-cm-task-job > div > div > div > button:nth-child(2)");
+    await page.evaluate(delay, 3000);
 
-          console.log("Available filtered menu items:", filteredMenuItems);
-
-          if (filteredMenuItems.length === 0) {
-            throw new Error("No valid menu items found");
-          }
-
-          const robotType = arcsRobotType ? arcsRobotType : filteredMenuItems[0];
-          await page.goto(`${process.env.SITE}/${robotType.toLowerCase()}?selectedTab=template`, {
-            waitUntil: "networkidle0",
-            timeout: 60000,
-          });
-
-          const buttonSelector = 'button.k-button.k-button-icontext[kendobutton][icon="plus"]:has(span.k-icon.k-i-plus)';
-          await page.waitForSelector(buttonSelector, {
-            visible: true,
-            timeout: 10000,
-          });
-          await page.click(buttonSelector);
-
-          // Wait for input fields to be available
-          await page.waitForSelector("input.k-input", {
-            visible: true,
-            timeout: 10000,
-          });
-          const inputFields = await page.$$("input.k-input");
-          const now = new Date();
-          const templateCode = `AUTO-CODE-${robotType.toUpperCase()}-${now.toISOString()}`;
-          const templateName = `AUTO-NAME-${robotType.toUpperCase()}-${now.toISOString()}`;
-          await inputFields[0].type(templateCode);
-          await inputFields[1].type(templateName);
-
-          await page.evaluate(delay, 1000);
-
-          const robotDropdownSelector = 'uc-dropdown[lab="Robot"] kendo-dropdownlist .k-dropdown-wrap';
-          const dropdownResults = await selectDropdownValue(page, robotDropdownSelector, [robot]);
-
-          await page.evaluate(delay, 1000);
-
-          const templateRowsResults = await addTemplateRows(page, templateActions);
-
-          await page.evaluate(delay, 3000);
-          // debug - submit button
-          await page.waitForSelector("div > div > app-cm-task-job > div > div > div > button:nth-child(2)", { visible: true });
-          await page.click("div > div > app-cm-task-job > div > div > div > button:nth-child(2)");
-          await page.evaluate(delay, 3000);
-
-          console.log("Task template creation completed successfully");
-
-          resolve({
-            status: "Create Task Template Pass",
-            templateInfo: {
-              robot,
-              templateActions,
-              templateCode,
-              templateName,
-              robotType,
-              dropdownResults,
-              templateRowsResults,
-            },
-          });
-        } else {
-          throw new Error("User name does not match expected value");
-        }
-      } catch (error) {
-        console.error("Task template creation failed:", error.message);
-        throw new Error("Task template creation failed");
-      }
-    } catch (error) {
-      console.error("Test failed:", error);
-      throw error;
-    } finally {
-      if (browser) {
-        // Uncomment the next line when you want to close the browser automatically
-        await browser.close();
-      }
+    return {
+      status: "Create Task Template Pass",
+      templateInfo: {
+        robot,
+        templateActions,
+        templateCode,
+        templateName,
+        robotType,
+        dropdownResults,
+        templateRowsResults,
+      },
+    };
+  } catch (error) {
+    console.error("Task template creation failed:", error.message);
+    throw new Error("Task template creation failed");
+  } finally {
+    if (browser) {
+      await browser.close();
     }
-  });
+  }
 }
+
 
 module.exports = createTaskTemplate;

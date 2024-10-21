@@ -1,5 +1,5 @@
 require("dotenv").config();
-const puppeteer = require("puppeteer");
+const { setupBrowser } = require('../utils/browserUtils');
 const { delay } = require("../../helper");
 
 async function selectDropdownItem(page, selector, item) {
@@ -68,26 +68,31 @@ async function createTaskSchedule(session, { templateName, startDate, endDate, s
   return new Promise(async (resolve, reject) => {
     let browser;
     try {
-      browser = await puppeteer.launch({
-        headless: false,
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      });
-      const page = await browser.newPage();
+      // browser = await puppeteer.launch({
+      //   headless: false,
+      //   args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      // });
+      // const page = await browser.newPage();
 
-      await page.setViewport({ width: 1080, height: 720 });
+      // await page.setViewport({ width: 1080, height: 720 });
+
+      // // Set session storage before navigation
+      // await page.evaluateOnNewDocument((sessionData) => {
+      //   Object.keys(sessionData).forEach((key) => {
+      //     sessionStorage.setItem(key, sessionData[key]);
+      //   });
+      //   console.log("SessionStorage set in the browser");
+      // }, session);
+
+      const { browser: br, page } = await setupBrowser(session);
+      browser = br;
+
 
       const taskSchedulingInfo = {
         startDate,
         endDate,
       }
 
-      // Set session storage before navigation
-      await page.evaluateOnNewDocument((sessionData) => {
-        Object.keys(sessionData).forEach((key) => {
-          sessionStorage.setItem(key, sessionData[key]);
-        });
-        console.log("SessionStorage set in the browser");
-      }, session);
 
       await page.goto(process.env.SITE, {
         waitUntil: "networkidle0",
