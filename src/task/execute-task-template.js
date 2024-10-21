@@ -118,8 +118,8 @@ async function executeTaskTemplate(session, { arcsRobotType }) {
     const { browser: br, page } = await setupBrowser(session);
     browser = br;
 
-    await page.goto(process.env.SITE, { waitUntil: "networkidle0", timeout: 60000 });
-    console.log("Page loaded with session data");
+    // await page.goto(process.env.SITE, { waitUntil: "networkidle0", timeout: 60000 });
+    // console.log("Page loaded with session data");
 
     const robotType = await navigateToTemplate(page, arcsRobotType);
     const result = await clickAutoRowExecuteButtons(page);

@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { setupBrowser } = require('../utils/browserUtils');
+const { setupBrowser, navigateToSchedule } = require("../utils/browserUtils");
 const { delay } = require("../../helper");
 
 async function selectDropdownItem(page, selector, item) {
@@ -61,7 +61,7 @@ async function selectDropdownItem(page, selector, item) {
   }
 
   console.log(`Selected value for dropdown: ${result.selected}`);
-  return result; 
+  return result;
 }
 
 async function createTaskSchedule(session, { templateName, startDate, endDate, schedulingSettings = {}, arcsRobotType }) {
@@ -71,120 +71,112 @@ async function createTaskSchedule(session, { templateName, startDate, endDate, s
       const { browser: br, page } = await setupBrowser(session);
       browser = br;
 
-
       const taskSchedulingInfo = {
         startDate,
         endDate,
-      }
-
-      await page.goto(process.env.SITE, {
-        waitUntil: "networkidle0",
-        timeout: 60000, // Increase timeout to 60 seconds
-      });
-      console.log("Page loaded with session data");
+      };
 
       try {
-        await page.waitForSelector("div.header.header-bg", { timeout: 10000 });
-        console.log("Found header, likely logged in");
+        // await page.goto(process.env.SITE, {
+        //   waitUntil: "networkidle0",
+        //   timeout: 60000, // Increase timeout to 60 seconds
+        // });
+        // console.log("Page loaded with session data");
+        // await page.waitForSelector("div.header.header-bg", { timeout: 10000 });
+        // console.log("Found header, likely logged in");
 
-        const userName = await page.$eval("div.profile span", (el) => el.textContent);
-        console.log("User name found:", userName);
+        // const userName = await page.$eval("div.profile span", (el) => el.textContent);
+        // console.log("User name found:", userName);
 
-        if (userName.includes("RV")) {
-          console.log("Session is valid, user is logged in");
+        // if (userName.includes("RV")) {
+        //   console.log("Session is valid, user is logged in");
 
-          await page.waitForSelector("li[kendodraweritem]", {
-            visible: true,
-            timeout: 10000,
-          });
+        //   await page.waitForSelector("li[kendodraweritem]", {
+        //     visible: true,
+        //     timeout: 10000,
+        //   });
 
-          const filteredMenuItems = await page.evaluate(() => {
-            const items = Array.from(document.querySelectorAll("li[kendodraweritem]"));
-            const allLabels = items.map((item) => item.getAttribute("aria-label")).filter((label) => label);
-            return allLabels.filter((label) => !["Dashboard", "Setup"].includes(label));
-          });
+        //   const filteredMenuItems = await page.evaluate(() => {
+        //     const items = Array.from(document.querySelectorAll("li[kendodraweritem]"));
+        //     const allLabels = items.map((item) => item.getAttribute("aria-label")).filter((label) => label);
+        //     return allLabels.filter((label) => !["Dashboard", "Setup"].includes(label));
+        //   });
 
-          console.log("Available filtered menu items:", filteredMenuItems);
+        //   console.log("Available filtered menu items:", filteredMenuItems);
 
-          if (filteredMenuItems.length === 0) {
-            throw new Error("No valid menu items found");
-          }
-          const robotType = arcsRobotType ? arcsRobotType : filteredMenuItems[0];
-          await page.goto(`${process.env.SITE}/${robotType.toLowerCase()}?selectedTab=schedule`, {
-            waitUntil: "networkidle0",
-            timeout: 60000,
-          });
+        //   if (filteredMenuItems.length === 0) {
+        //     throw new Error("No valid menu items found");
+        //   }
+        //   const robotType = arcsRobotType ? arcsRobotType : filteredMenuItems[0];
+        //   await page.goto(`${process.env.SITE}/${robotType.toLowerCase()}?selectedTab=schedule`, {
+        //     waitUntil: "networkidle0",
+        //     timeout: 60000,
+        //   });
 
-          const newButtonSelector = "kendo-grid > kendo-grid-toolbar > button";
-          await page.waitForSelector(newButtonSelector, {
-            visible: true,
-            timeout: 10000,
-          });
-          await page.click(newButtonSelector);
+        const robotType = await navigateToSchedule(page, arcsRobotType);
 
-          await page.evaluate(delay, 1000);
+        const newButtonSelector = "kendo-grid > kendo-grid-toolbar > button";
+        await page.waitForSelector(newButtonSelector, {
+          visible: true,
+          timeout: 10000,
+        });
+        await page.click(newButtonSelector);
 
-          const startDateSelector = 'uc-date-input.col.date-input-container.startDateTime > kendo-datetimepicker > span > kendo-dateinput input';
-          const endDateSelector = 'uc-date-input.col.date-input-container.endDateTime > kendo-datetimepicker > span > kendo-dateinput input';
+        await page.evaluate(delay, 1000);
 
-          await page.waitForSelector(startDateSelector, { visible: true, timeout: 10000 });
-          await page.waitForSelector(endDateSelector, { visible: true, timeout: 10000 });
+        const startDateSelector = "uc-date-input.col.date-input-container.startDateTime > kendo-datetimepicker > span > kendo-dateinput input";
+        const endDateSelector = "uc-date-input.col.date-input-container.endDateTime > kendo-datetimepicker > span > kendo-dateinput input";
 
-          await page.type(startDateSelector, startDate, { delay: 100 });
-          await page.type(endDateSelector, endDate, { delay: 100 });
+        await page.waitForSelector(startDateSelector, { visible: true, timeout: 10000 });
+        await page.waitForSelector(endDateSelector, { visible: true, timeout: 10000 });
 
-          await page.evaluate(delay, 1000);
-          const scheduleNameSelector = 'div:nth-child(2) > uc-txtbox > form > kendo-textbox > input';
-          const scheduleName = `[Schedule] ${templateName}`;
-          await page.type(scheduleNameSelector, scheduleName, { delay: 100 });
-          taskSchedulingInfo.scheduleName = scheduleName;
+        await page.type(startDateSelector, startDate, { delay: 100 });
+        await page.type(endDateSelector, endDate, { delay: 100 });
 
-          await page.evaluate(delay, 2000);
+        await page.evaluate(delay, 1000);
+        const scheduleNameSelector = "div:nth-child(2) > uc-txtbox > form > kendo-textbox > input";
+        const scheduleName = `[Schedule] ${templateName}`;
+        await page.type(scheduleNameSelector, scheduleName, { delay: 100 });
+        taskSchedulingInfo.scheduleName = scheduleName;
 
-          const recurrenceDropdownSelector = "uc-cron-editor > div > uc-dropdown > div > kendo-dropdownlist";
-          const recurrenceDropdownSelectorResult = await selectDropdownItem(page, recurrenceDropdownSelector, schedulingSettings.recurrence );
-          taskSchedulingInfo.recurrenceDropdownSelectorResult = recurrenceDropdownSelectorResult;
-          await page.evaluate(delay, 3000);
+        await page.evaluate(delay, 2000);
 
-          if(schedulingSettings.recurrence ==='One Time Only') {}
+        const recurrenceDropdownSelector = "uc-cron-editor > div > uc-dropdown > div > kendo-dropdownlist";
+        const recurrenceDropdownSelectorResult = await selectDropdownItem(page, recurrenceDropdownSelector, schedulingSettings.recurrence);
+        taskSchedulingInfo.recurrenceDropdownSelectorResult = recurrenceDropdownSelectorResult;
+        await page.evaluate(delay, 3000);
 
-          if(schedulingSettings.recurrence ==='Hourly') {
-            const patternDropdownSelector = "uc-dropdown.col.dropdown-container.ng-star-inserted > div > kendo-dropdownlist";
-            const patternDropdownSelectorResult = await selectDropdownItem(page, patternDropdownSelector, schedulingSettings.pattern );
-            taskSchedulingInfo.patternDropdownSelectorResult = patternDropdownSelectorResult;
-
-            const minuteSelector = 'div.form-row.hour-minute.ng-star-inserted > uc-txtbox > div > kendo-numerictextbox > span > input';
-            await page.type(minuteSelector, schedulingSettings.minute, { delay: 100 });
-            taskSchedulingInfo.minute = schedulingSettings.minute;
-          }
-
-          await page.evaluate(delay, 2000);
-          const templateDropdownSelector = "uc-dropdown > div > kendo-dropdownlist";
-          const templateDropdownSelectorResult = await selectDropdownItem(page, templateDropdownSelector, templateName );
-          taskSchedulingInfo.templateDropdownSelectorResult = templateDropdownSelectorResult
-
-   
-          await page.evaluate(delay, 1000);
-          await page.click("div.button-container > button.k-button.ng-star-inserted");
-
-          await page.evaluate(delay, 3000);
-
-          resolve({
-            status: "Create Task Schedule Pass",
-            // taskSchedulingInfo: {
-            //   scheduleName,
-            //   startDate,
-            //   endDate,
-            //   templateDropdownSelectorResult,
-            //   recurrenceDropdownSelectorResult,
-            //   patternDropdownSelectorResult
-            // }
-            taskSchedulingInfo
-
-          });
-        } else {
-          throw new Error("User name does not match expected value");
+        if (schedulingSettings.recurrence === "One Time Only") {
         }
+
+        if (schedulingSettings.recurrence === "Hourly") {
+          const patternDropdownSelector = "uc-dropdown.col.dropdown-container.ng-star-inserted > div > kendo-dropdownlist";
+          const patternDropdownSelectorResult = await selectDropdownItem(page, patternDropdownSelector, schedulingSettings.pattern);
+          taskSchedulingInfo.patternDropdownSelectorResult = patternDropdownSelectorResult;
+
+          const minuteSelector = "div.form-row.hour-minute.ng-star-inserted > uc-txtbox > div > kendo-numerictextbox > span > input";
+          await page.type(minuteSelector, schedulingSettings.minute, { delay: 100 });
+          taskSchedulingInfo.minute = schedulingSettings.minute;
+        }
+
+        await page.evaluate(delay, 2000);
+        const templateDropdownSelector = "uc-dropdown > div > kendo-dropdownlist";
+        const templateDropdownSelectorResult = await selectDropdownItem(page, templateDropdownSelector, templateName);
+        taskSchedulingInfo.templateDropdownSelectorResult = templateDropdownSelectorResult;
+
+        await page.evaluate(delay, 1000);
+        await page.click("div.button-container > button.k-button.ng-star-inserted");
+
+        await page.evaluate(delay, 3000);
+
+        resolve({
+          status: "Create Task Schedule Pass",
+          robotType,
+          taskSchedulingInfo,
+        });
+        // } else {
+        //   throw new Error("User name does not match expected value");
+        // }
       } catch (error) {
         console.error("Task Schedule creation failed:", error.message);
         throw new Error("Task Schedule creation failed");
