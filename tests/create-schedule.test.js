@@ -6,7 +6,7 @@ describe("ARCS Tests", () => {
   const testData = [
     {
       data: {
-        templateName: "gasd",
+        templateName: "AUTO-CODE-PATROL-2024-10-18T03:35:39.844Z",
         startDate: "181020240000",
         endDate: "181020242359",
         schedulingSettings: {

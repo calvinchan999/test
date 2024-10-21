@@ -14,6 +14,7 @@ describe("ARCS Tests", () => {
       await writeResultToJson("execute-task-template-result", executeTaskTemplateResult);
 
       expect(executeTaskTemplateResult.status).toBe("Execute Task Template Pass");
+      expect(executeTaskTemplateResult.robotType).toBeDefined();
       expect(executeTaskTemplateResult).toHaveProperty("processedRows");
       expect(Array.isArray(executeTaskTemplateResult.processedRows)).toBe(true);
     } catch (error) {

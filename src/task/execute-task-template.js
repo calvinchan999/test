@@ -1,12 +1,8 @@
 require("dotenv").config();
-// const puppeteer = require("puppeteer");
-const { setupBrowser } = require('../utils/browserUtils');
+const { setupBrowser, navigateToTemplate } = require("../utils/browserUtils");
 const { delay } = require("../../helper");
 
-
 async function clickAutoRowExecuteButtons(page) {
-  // const { clickAll = false, maxRows = Infinity, startFromLatest = true } = options;
-
   try {
     // callback function for clickButton
     const clickButton = async (rowInfo) => {
@@ -117,86 +113,33 @@ async function clickAutoRowExecuteButtons(page) {
 }
 
 async function executeTaskTemplate(session, { arcsRobotType }) {
-  return new Promise(async (resolve, reject) => {
-    let browser;
-    try {
-      const { browser: br, page } = await setupBrowser(session);
-      browser = br;
+  let browser;
+  try {
+    const { browser: br, page } = await setupBrowser(session);
+    browser = br;
 
-      await page.goto(process.env.SITE, {
-        waitUntil: "networkidle0",
-        timeout: 60000, // Increase timeout to 60 seconds
-      });
-      console.log("Page loaded with session data");
+    await page.goto(process.env.SITE, { waitUntil: "networkidle0", timeout: 60000 });
+    console.log("Page loaded with session data");
 
-      try {
-        await page.waitForSelector("div.header.header-bg", { timeout: 10000 });
-        console.log("Found header, likely logged in");
+    const robotType = await navigateToTemplate(page, arcsRobotType);
+    const result = await clickAutoRowExecuteButtons(page);
 
-        const userName = await page.$eval("div.profile span", (el) => el.textContent);
-        console.log("User name found:", userName);
-
-        if (userName.includes("RV")) {
-          console.log("Session is valid, user is logged in");
-
-          await page.waitForSelector("li[kendodraweritem]", {
-            visible: true,
-            timeout: 10000,
-          });
-
-          const filteredMenuItems = await page.evaluate(() => {
-            const items = Array.from(document.querySelectorAll("li[kendodraweritem]"));
-            const allLabels = items.map((item) => item.getAttribute("aria-label")).filter((label) => label);
-            return allLabels.filter((label) => !["Dashboard", "Setup"].includes(label));
-          });
-
-          console.log("Available filtered menu items:", filteredMenuItems);
-
-          if (filteredMenuItems.length === 0) {
-            throw new Error("No valid menu items found");
-          }
-
-          const robotType = arcsRobotType ? arcsRobotType : filteredMenuItems[0];
-
-          await page.goto(`${process.env.SITE}/${robotType.toLowerCase()}?selectedTab=template`, {
-            waitUntil: "networkidle0",
-            timeout: 60000,
-          });
-
-          const result = await clickAutoRowExecuteButtons(page);
-
-          resolve({
-            status: "Execute Task Template Pass",
-            processedRows: result ? result : null,
-          });
-        } else {
-          // throw new Error("User name does not match expected value");
-          reject({
-            status: "User name does not match expected value",
-          });
-        }
-      } catch (error) {
-        console.error("Task template execution failed:", error.message);
-        // throw new Error("Task template execution failed");
-
-        reject({
-          status: `Task template execution failed: ${error.message}`,
-          processedRows: result ? result : null,
-        });
-      }
-    } catch (error) {
-      console.error("Test failed:", error);
-      // throw error;
-      reject({
-        status: `Test failed: ${error}`,
-        processedRows: result ? result : null,
-      });
-    } finally {
-      if (browser) {
-        await browser.close();
-      }
+    return {
+      status: "Execute Task Template Pass",
+      robotType,
+      processedRows: result,
+    };
+  } catch (error) {
+    console.error("Task template execution failed:", error.message);
+    return {
+      status: `Task template execution failed: ${error.message}`,
+      processedRows: null,
+    };
+  } finally {
+    if (browser) {
+      await browser.close();
     }
-  });
+  }
 }
 
 module.exports = executeTaskTemplate;
