@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { navigateToTemplate, addTemplateRows, clickEditButton } = require("../utils/taskUtils");
+const { navigateToTemplate, addTemplateRows, clickTaskTemplateEditButton } = require("../utils/taskUtils");
 const { setupBrowser } = require("../utils/browserUtils");
 const { delay } = require("../../helper");
 
@@ -11,7 +11,7 @@ async function updateTaskTemplate(session, { arcsRobotType, templateActions, tem
 
     const robotType = await navigateToTemplate(page, arcsRobotType);
 
-    await clickEditButton(page, templateCode);
+    await clickTaskTemplateEditButton(page, templateCode);
     await page.evaluate(delay, 1000);
 
     await page.waitForSelector("input.k-input", { visible: true, timeout: 10000 });

@@ -64,7 +64,7 @@ async function selectDropdownItem(page, selector, item) {
   return result;
 }
 
-async function createTaskSchedule(session, { templateName, startDate, endDate, schedulingSettings = {}, arcsRobotType }) {
+async function createTaskSchedule(session, { templateCode, startDate, endDate, schedulingSettings = {}, arcsRobotType }) {
   return new Promise(async (resolve, reject) => {
     let browser;
     try {
@@ -135,7 +135,7 @@ async function createTaskSchedule(session, { templateName, startDate, endDate, s
 
         await page.evaluate(delay, 1000);
         const scheduleNameSelector = "div:nth-child(2) > uc-txtbox > form > kendo-textbox > input";
-        const scheduleName = `[Schedule] ${templateName}`;
+        const scheduleName = `[Schedule] ${templateCode}`;
         await page.type(scheduleNameSelector, scheduleName, { delay: 100 });
         taskSchedulingInfo.scheduleName = scheduleName;
 
@@ -161,7 +161,7 @@ async function createTaskSchedule(session, { templateName, startDate, endDate, s
 
         await page.evaluate(delay, 2000);
         const templateDropdownSelector = "uc-dropdown > div > kendo-dropdownlist";
-        const templateDropdownSelectorResult = await selectDropdownItem(page, templateDropdownSelector, templateName);
+        const templateDropdownSelectorResult = await selectDropdownItem(page, templateDropdownSelector, templateCode);
         taskSchedulingInfo.templateDropdownSelectorResult = templateDropdownSelectorResult;
 
         await page.evaluate(delay, 1000);

@@ -1,7 +1,7 @@
 // taskUtils.js
 const { delay } = require("../../helper");
 
-async function clickEditButton(page, templateCode) {
+async function clickTaskTemplateEditButton(page, templateCode) {
   await page.evaluate((code) => {
     const rows = document.querySelectorAll("tbody tr");
     for (const row of rows) {
@@ -283,8 +283,7 @@ async function actionGoToWaypoint(page, action) {
 }
 
 module.exports = {
-  navigateToTemplate,
   selectDropdownValue,
   addTemplateRows,
-  clickEditButton,
+  clickTaskTemplateEditButton,
 };
