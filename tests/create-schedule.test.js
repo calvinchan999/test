@@ -7,12 +7,12 @@ describe("ARCS Tests", () => {
     {
       data: {
         templateCode: "AUTO-CODE-PATROL-2024-10-18T03:35:39.844Z",
-        startDate: "181020240000",
-        endDate: "181020242359",
+        startDate: "151020240000",
+        endDate: "221220242359",
         schedulingSettings: {
           recurrence: "Hourly", // only support (One Time Only, Hourly)
           pattern: "Every",
-          minute: "2",
+          minute: "1",
         },
         arcsRobotType: "Patrol", // Delivery, Patrol
       },
@@ -34,7 +34,7 @@ describe("ARCS Tests", () => {
         expect(createTaskScheduleResult.taskSchedulingInfo.recurrenceDropdownSelectorResult).toBeDefined();
         expect(createTaskScheduleResult.taskSchedulingInfo.recurrenceDropdownSelectorResult.success).toBe(true);
       } catch (error) {
-        console.error("Task Template Test error:", error);
+        console.error("Create Task Template Test error:", error);
         throw error;
       }
     },300000)

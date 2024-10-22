@@ -11,6 +11,12 @@ describe("ARCS Tests", () => {
         templateActions: [
           {
             action: ["5W", "R03"],
+          },
+          {
+            action: ["5W", "R05"],
+          },
+          {
+            action: ["5W", "R03"],
           }
         ],
       },
@@ -29,7 +35,7 @@ describe("ARCS Tests", () => {
         expect(updateTaskTemplateResult.templateInfo.robotType).toBeDefined();
         expect(updateTaskTemplateResult.templateInfo.templateRowsResults).toBeDefined();
       } catch (error) {
-        console.error(`Task Template Test #${index} error:`, error);
+        console.error(`Edit Task Template Test #${index} error:`, error);
         throw error;
       }
     }, 300000);

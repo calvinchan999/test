@@ -1,6 +1,6 @@
 require("dotenv").config();
-const { selectDropdownValue, addTemplateRows } = require('../utils/taskUtils');
-const { setupBrowser, navigateToTemplate } = require('../utils/browserUtils');
+const { selectDropdownValue, addTemplateRows } = require("../utils/taskUtils");
+const { setupBrowser, navigateToTemplate, waitForApiResponse } = require("../utils/browserUtils");
 const { delay } = require("../../helper");
 
 async function createTaskTemplate(session, { robot, arcsRobotType, templateActions }) {
@@ -14,7 +14,6 @@ async function createTaskTemplate(session, { robot, arcsRobotType, templateActio
     const buttonSelector = 'button.k-button.k-button-icontext[kendobutton][icon="plus"]:has(span.k-icon.k-i-plus)';
     await page.waitForSelector(buttonSelector, { visible: true, timeout: 10000 });
     await page.click(buttonSelector);
-
     await page.waitForSelector("input.k-input", { visible: true, timeout: 10000 });
     const inputFields = await page.$$("input.k-input");
     const now = new Date();
@@ -35,6 +34,9 @@ async function createTaskTemplate(session, { robot, arcsRobotType, templateActio
     await page.evaluate(delay, 3000);
     await page.waitForSelector("div > div > app-cm-task-job > div > div > div > button:nth-child(2)", { visible: true });
     await page.click("div > div > app-cm-task-job > div > div > div > button:nth-child(2)");
+
+    await waitForApiResponse(page, "/api/mission/v1", 15000);
+
     await page.evaluate(delay, 3000);
 
     return {
@@ -50,14 +52,12 @@ async function createTaskTemplate(session, { robot, arcsRobotType, templateActio
       },
     };
   } catch (error) {
-    console.error("Task template creation failed:", error.message);
-    throw new Error("Task template creation failed");
+    throw error;
   } finally {
     if (browser) {
       await browser.close();
     }
   }
 }
-
 
 module.exports = createTaskTemplate;

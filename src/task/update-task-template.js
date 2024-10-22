@@ -1,6 +1,6 @@
 require("dotenv").config();
 const { addTemplateRows, clickTaskTemplateEditButton } = require("../utils/taskUtils");
-const { setupBrowser, navigateToTemplate } = require("../utils/browserUtils");
+const { setupBrowser, navigateToTemplate, waitForApiResponse } = require("../utils/browserUtils");
 const { delay } = require("../../helper");
 
 async function updateTaskTemplate(session, { arcsRobotType, templateActions, templateCode }) {
@@ -34,6 +34,8 @@ async function updateTaskTemplate(session, { arcsRobotType, templateActions, tem
     await page.evaluate(delay, 3000);
     await page.waitForSelector("div > div > app-cm-task-job > div > div > div > button:nth-child(2)", { visible: true });
     await page.click("div > div > app-cm-task-job > div > div > div > button:nth-child(2)");
+    
+    await waitForApiResponse(page, "/api/mission/v1", 15000);
     await page.evaluate(delay, 3000);
 
     return {
@@ -46,8 +48,8 @@ async function updateTaskTemplate(session, { arcsRobotType, templateActions, tem
       },
     };
   } catch (error) {
-    console.error("Update Task template failed:", error.message);
-    throw new Error("Update Task template failed");
+    // throw new Error("Update Task template failed");
+    throw error;
   } finally {
     if (browser) {
       await browser.close();

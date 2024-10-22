@@ -130,7 +130,7 @@ async function executeTaskTemplate(session, { arcsRobotType }) {
       processedRows: result,
     };
   } catch (error) {
-    console.error("Task template execution failed:", error.message);
+    console.error("Task template execution failed:", error?.message ? error.message : error);
     return {
       status: `Task template execution failed: ${error.message}`,
       processedRows: null,
