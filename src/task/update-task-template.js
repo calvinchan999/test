@@ -1,6 +1,6 @@
 require("dotenv").config();
-const { navigateToTemplate, addTemplateRows, clickTaskTemplateEditButton } = require("../utils/taskUtils");
-const { setupBrowser } = require("../utils/browserUtils");
+const { addTemplateRows, clickTaskTemplateEditButton } = require("../utils/taskUtils");
+const { setupBrowser, navigateToTemplate } = require("../utils/browserUtils");
 const { delay } = require("../../helper");
 
 async function updateTaskTemplate(session, { arcsRobotType, templateActions, templateCode }) {
