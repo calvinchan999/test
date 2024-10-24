@@ -1,80 +1,36 @@
 require("dotenv").config();
 const { setupBrowser, navigateToTemplate } = require("../utils/browserUtils");
+const { getTask, cancelTask } = require("../api/api");
 const { delay } = require("../../helper");
+const _ = require("lodash");
 
 async function clickAutoRowExecuteButtons(page) {
   try {
     // callback function for clickButton
     const clickButton = async (rowInfo) => {
       const buttonSelector = `table.k-grid-table > tbody > tr:nth-child(${rowInfo.index + 1}) > td.execute > a`;
-
+      const submitButtonSelector = `app-cm-task-job > div > div > div > button:nth-child(2)`;
       await page.waitForSelector(buttonSelector, { visible: true, timeout: 10000 });
 
       try {
         await page.click(buttonSelector);
         console.log(`Clicked execute button for AUTO row ${rowInfo.index} (Mission ID: ${rowInfo.missionId})`);
-        await page.evaluate(delay, 1000);
-
-        const responsePromise = new Promise((resolve) => {
-          const responseHandler = async (response) => {
-            const url = response.url();
-            let inputString = rowInfo.missionId;
-            inputString = inputString.substring(0, inputString.length - 25);
-            if (url.includes(inputString)) {
-              const contentType = response.headers()["content-type"];
-              if (contentType && contentType.includes("application/json")) {
-                const responseBody = await response.json();
-                if (page && typeof page.removeListener === "function") {
-                  page.removeListener("response", responseHandler);
-                }
-                resolve(responseBody);
-              } else {
-                console.log(`Skipping non-JSON response for URL: ${url}`);
-              }
-
-              if (page && typeof page.removeListener === "function") {
-                page.removeListener("response", responseHandler); // Remove the listener
-              }
-              resolve(null);
-            }
-          };
-
-          page.on("response", responseHandler);
-        });
-
-        await page.click("app-cm-task-job > div > div > div > button:nth-child(2)");
-        const apiResponse = await Promise.race([
-          responsePromise,
-          new Promise((_, reject) => setTimeout(() => reject(new Error("API response timeout")), 10000)),
-        ]);
-
-        console.log(`API response for confirm button click on row ${rowInfo.index}:`, apiResponse);
-        const isSuccess = apiResponse ? true : false;
-
-        if (isSuccess) {
-          // console.log(`Successfully processed confirm action for row ${rowInfo.index}`);
-          const msg = `Successfully processed confirm action for row ${rowInfo.index}`;
-          return msg;
-        } else {
-          // console.log(`API indicated failure for confirm action on row ${rowInfo.index}`);
-          const msg = `API indicated failure for confirm action on row ${rowInfo.index}`;
-          return msg;
-        }
+        await page.waitForSelector(submitButtonSelector, { visible: true, timeout: 10000 });
+        await page.click(submitButtonSelector);
+        return true;
       } catch (error) {
-        // console.log(`Failed to click execute button for AUTO row ${rowInfo.index} (Mission ID: ${rowInfo.missionId})`, error);
         const err = `Failed to click execute button for AUTO row ${rowInfo.index} (Mission ID: ${rowInfo.missionId})`;
         return err;
       }
     };
 
-    // Wait for the table to be visible
     await page.waitForSelector("table.k-grid-table", { visible: true, timeout: 30000 });
 
     // Find all AUTO rows and get their information
     const autoRowsInfo = await page.evaluate(() => {
       const rows = Array.from(document.querySelectorAll("table.k-grid-table > tbody > tr"));
       return rows
-        .filter((row) => row.textContent.includes("AUTO"))
+        .filter((row) => row.textContent.includes("AUTO-CODE"))
         .map((row) => {
           const missionId = row.querySelector("td.missionId").textContent.trim();
           const date = missionId.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)[0];
@@ -99,7 +55,7 @@ async function clickAutoRowExecuteButtons(page) {
     for (const rowInfo of autoRowsInfo) {
       const result = await clickButton(rowInfo);
       if (result) {
-        clickedRows.push({ rowInfo, result: result });
+        clickedRows.push({ rowInfo });
       }
     }
 
@@ -118,16 +74,54 @@ async function executeTaskTemplate(session, { arcsRobotType }) {
     const { browser: br, page } = await setupBrowser(session);
     browser = br;
 
-    // await page.goto(process.env.SITE, { waitUntil: "networkidle0", timeout: 60000 });
-    // console.log("Page loaded with session data");
+    const FMS_API_URL = process.env.FMS_API_URL;
+    const taskApiResponse = await getTask(page, FMS_API_URL);
+
+    const { records } = taskApiResponse.data;
+    console.log(records);
+    const deletedRecord = [];
+    const deletedRecordErrors = [];
+
+    for (let record of records) {
+      const { missionId, taskId } = record;
+      if (missionId.indexOf("AUTO-CODE-") > -1) {
+        try {
+          await cancelTask(page, FMS_API_URL, taskId);
+          deletedRecord.push(record);
+        } catch (error) {
+          deletedRecordErrors.push(`Error deleting task ${taskId}: ${error.message}`);
+        }
+      }
+    }
+
+    console.log("Deleted Records:", deletedRecord);
+    console.log("Errors:", deletedRecordErrors);
 
     const robotType = await navigateToTemplate(page, arcsRobotType);
     const result = await clickAutoRowExecuteButtons(page);
+
+    await page.evaluate(delay, 5000);
+
+    // todo task status checking
+    // const updatedTaskApiResponse = await getTask(page, FMS_API_URL);
+
+    // const { processedRows } = result;
+    // for(const processedRows of processedRows) {
+    //   const { missionId } = processedRows.rowInfo;
+    //   _.find(processedRows)
+    // }
+
+
+    // processedRows
 
     return {
       status: "Execute Task Template Pass",
       robotType,
       processedRows: result,
+      deletedRecords: {
+        deletedRecord,
+        deletedRecordErrors,
+      },
     };
   } catch (error) {
     console.error("Task template execution failed:", error?.message ? error.message : error);
